@@ -18,6 +18,9 @@ categories = ["api-bindings", "compilers"]
 license = "MIT"
 license-file = "LICENSE"
 
+[features]
+vendored-llvm = ["llvm-src"]
+
 [dependencies]
 anyhow = { version = "1.0.68", default-features = true }
 cxx = "1.0.94"
@@ -27,6 +30,7 @@ clap = { version = "4.5", features = ["derive"] }
 
 [build-dependencies]
 cxx-build = "1.0.94"
+llvm-src = { git = "https://github.com/Etto48/llvm-src.git", optional = true }
 anyhow = { version = "1.0.68", default-features = true }
 
 [lib]
