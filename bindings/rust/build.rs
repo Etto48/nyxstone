@@ -48,9 +48,17 @@ fn main() {
     #[cfg(feature = "vendored-llvm")]
     let llvm_include_dir = include_vendored_llvm();
 
+    // Determine if we need to use /std:c++17 or -std=c++17 to set the C++ standard
+    // MSVC uses / instead of - for some reason...
+    let std_cpp17_flag = if std::env::var("HOST").map_or(false, |host| host.contains("msvc")) {
+        "/std:c++17"
+    } else {
+        "-std=c++17"
+    };
+
     // Import Nyxstone C++ lib
     cxx_build::bridge("src/lib.rs")
-        .flag_if_supported("-std=c++17")
+        .flag_if_supported(std_cpp17_flag)
         .include("nyxstone/include")
         .include(llvm_include_dir.trim())
         // .include(cxxbridge_dir)
