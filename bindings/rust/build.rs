@@ -43,41 +43,10 @@ fn main() {
     // let out_dir = std::env::var("OUT_DIR").unwrap();
     // let cxxbridge_dir = out_dir + "/../../../../cxxbridge";
     
-    let llvm_include_dir = if !cfg!(feature = "vendored-llvm") {
-        let config = search_llvm_config();
-        if config.is_err() {
-            panic!("{} Please either install LLVM 15 with static libs into your PATH or supply the location via $NYXSTONE_LLVM_PREFIX", config.unwrap_err());
-        };
-        let config = config.unwrap();
-
-        // Tell cargo about the library directory of llvm.
-        let libdir = llvm_config(&config, ["--libdir"]);
-        println!("cargo:libdir={}", libdir);
-        println!("cargo:rustc-link-search=native={}", libdir);
-        // Tell cargo about all llvm static libraries to link against.
-        let llvm_libs = get_link_libraries(&config);
-        for name in llvm_libs {
-            println!("cargo:rustc-link-lib=static={}", name);
-        }
-
-        // llvm-sys uses the target os to select if system libs should be statically or dynamically linked.
-        let system_linking = if target_os_is("musl") { "static" } else { "dylib" };
-
-        // Tell cargo about the system libraries needed by llvm.
-        for name in get_system_libraries(&config) {
-            println!("cargo:rustc-link-lib={}={}", system_linking, name);
-        }
-
-        // Get the include directory for the c++ code.
-        llvm_config(&config, ["--includedir"])
-    }
-    else
-    {
-        let artifacts = llvm_src::Build::default().build();
-        artifacts.print_cargo_metadata();
-
-        artifacts.include().to_str().unwrap().to_string()
-    };
+    #[cfg(not(feature = "vendored-llvm"))]
+    let llvm_include_dir = include_system_llvm();
+    #[cfg(feature = "vendored-llvm")]
+    let llvm_include_dir = include_vendored_llvm();
 
     // Import Nyxstone C++ lib
     cxx_build::bridge("src/lib.rs")
@@ -92,6 +61,44 @@ fn main() {
     for file in headers.iter().chain(sources.iter()) {
         println!("cargo:rerun-if-changed={}", file);
     }
+}
+
+#[allow(dead_code)]
+fn include_system_llvm() -> String{
+    let config = search_llvm_config();
+    if config.is_err() {
+        panic!("{} Please either install LLVM 15 with static libs into your PATH or supply the location via $NYXSTONE_LLVM_PREFIX", config.unwrap_err());
+    };
+    let config = config.unwrap();
+
+    // Tell cargo about the library directory of llvm.
+    let libdir = llvm_config(&config, ["--libdir"]);
+    println!("cargo:libdir={}", libdir);
+    println!("cargo:rustc-link-search=native={}", libdir);
+    // Tell cargo about all llvm static libraries to link against.
+    let llvm_libs = get_link_libraries(&config);
+    for name in llvm_libs {
+        println!("cargo:rustc-link-lib=static={}", name);
+    }
+
+    // llvm-sys uses the target os to select if system libs should be statically or dynamically linked.
+    let system_linking = if target_os_is("musl") { "static" } else { "dylib" };
+
+    // Tell cargo about the system libraries needed by llvm.
+    for name in get_system_libraries(&config) {
+        println!("cargo:rustc-link-lib={}={}", system_linking, name);
+    }
+
+    // Get the include directory for the c++ code.
+    llvm_config(&config, ["--includedir"])
+}
+
+#[cfg(feature = "vendored-llvm")]
+fn include_vendored_llvm() -> String{
+    let artifacts = llvm_src::Build::default().build();
+    artifacts.print_cargo_metadata();
+
+    artifacts.include().to_str().unwrap().to_string()
 }
 
 /// Searches for LLVM in $NYXSTONE_LLVM_PREFIX/bin and in the path and ensures proper version and static
