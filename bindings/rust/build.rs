@@ -103,7 +103,10 @@ fn include_system_llvm() -> String{
 
 #[cfg(feature = "vendored-llvm")]
 fn include_vendored_llvm() -> String{
-    let artifacts = llvm_src::Build::default().build();
+    let artifacts = llvm_src::Build::default()
+        .profile("Release")
+        .required_libs(vec!["core", "mc", "all-targets"])
+        .build();
     artifacts.print_cargo_metadata();
 
     artifacts.include().to_str().unwrap().to_string()
