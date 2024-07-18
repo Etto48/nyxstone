@@ -71,6 +71,10 @@ fn main() {
     }
 }
 
+/// Finds the system LLVM installation and returns the include directory.
+/// This also sets cargo::libdir and cargo::rustc-link-search to the library directory of LLVM
+/// and cargo::rustc-link-lib to the static libraries of LLVM.
+/// This function is only used when the feature "vendored-llvm" is disabled.
 #[allow(dead_code)]
 fn include_system_llvm() -> String{
     let config = search_llvm_config();
@@ -101,6 +105,9 @@ fn include_system_llvm() -> String{
     llvm_config(&config, ["--includedir"])
 }
 
+/// Builds a vendored version of LLVM and returns the include directory.
+/// This also sets all the necessary cargo metadata for linking against the vendored LLVM.
+/// This function is only used when the feature "vendored-llvm" is enabled.
 #[cfg(feature = "vendored-llvm")]
 fn include_vendored_llvm() -> String{
     let artifacts = llvm_src::Build::default()
